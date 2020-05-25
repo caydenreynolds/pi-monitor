@@ -47,7 +47,7 @@ def get_disk_usage():
 def send_statistics():
     dates = []
     for i in range(6, -1, -1):
-        dates.append((datetime.datetime.now() - datetime.timedelta(days=i)))
+        dates.append((datetime.datetime.now() - datetime.timedelta(days=i)).replace(hour=0, minute=0, second=0))
 
     hourly_dates = []
     for i in range(len(dates)*24):
@@ -62,33 +62,34 @@ def send_statistics():
         mem_results.extend(get_mem_stats(date))
 
     pyplot.figure(figsize=(20,10))
-    pyplot.ylim(0, 100)
-    pyplot.ylabel(r'% of maximum')
 
     message = EmailMessage()
     message['Subject'] = 'Your Raspberry Pi'
     disk_usage = get_disk_usage()
     message.set_content(f'Your current disk usage is {disk_usage}')
 
-    for stat in ((cpu_results, 'cpu'), (mem_results, 'mem')):
+    for stat in ((cpu_results, 'CPU'), (mem_results, 'Memory')):
         image = BytesIO()
+        pyplot.ylim(0, 100)
+        pyplot.ylabel(r'% of maximum')
+        pyplot.xlabel(f'{stat[1]} usage')
         pyplot.plot(hourly_dates, stat[0])
         pyplot.savefig(image, format='jpg')
         image.seek(0)
         message.add_attachment(image.read(), maintype='application', subtype='octet-stream', filename=f'{stat[1]}.jpg')
         pyplot.cla()
-    
+
 
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl.create_default_context()) as server:
         server.login(environ.get('SOURCE_EMAIL'), environ.get('SOURCE_PASSWORD'))
         server.send_message(message, environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'))
 
 def main():
-    schedule.every().friday.at('23:55').do(send_statistics)
+   schedule.every().friday.at('23:55').do(send_statistics)
 
-    while True:
-        schedule.run_pending()
-        sleep(120)
+   while True:
+       schedule.run_pending()
+       sleep(120)
 
 
 if __name__ == "__main__":
