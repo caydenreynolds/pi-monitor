@@ -13,6 +13,7 @@ from matplotlib import pyplot
 ssl_port = 465
 
 def trim_lines(lines):
+    lines = lines[1:]
     useful_lines = []
     for line in lines:
         if not 'LINUX_RESTART' in line and not '%' in line and not line.strip() == '' and not 'Average:' in line:
