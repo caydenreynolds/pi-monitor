@@ -4,13 +4,14 @@ import ssl
 from email.message import EmailMessage
 from io import BytesIO
 from os import environ
-from sched import scheduler
 from subprocess import run
-from time import time
+from time import sleep
 
+import schedule
 from matplotlib import pyplot
 
 ssl_port = 465
+
 
 def trim_lines(lines):
     lines = lines[1:]
@@ -30,7 +31,7 @@ def get_cpu_stats(date):
 
     return [result/6 for result in hourly_results]
 
-def main():
+def send_statistics():
     dates = []
     for i in range(6, -1, -1):
         dates.append((datetime.datetime.now() - datetime.timedelta(days=i)))
@@ -59,10 +60,18 @@ def main():
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl.create_default_context()) as server:
         server.login(environ.get('SOURCE_EMAIL'), environ.get('SOURCE_PASSWORD'))
         server.send_message(message, environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'))
-        # server.sendmail(environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'), message.format(cpu_results))
 
-    
-    # print(cpu_results)
+
+def go():
+    print('ran')
+
+def main():
+    schedule.every(1).minutes.do(go)
+
+    while True:
+        schedule.run_pending()
+        sleep(60)
+
 
 if __name__ == "__main__":
     main()
