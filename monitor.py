@@ -16,7 +16,7 @@ def trim_lines(lines):
     lines = lines[1:]
     useful_lines = []
     for line in lines:
-        if not 'LINUX_RESTART' in line and not '%' in line and not line.strip() == '' and not 'Average:' in line:
+        if not 'LINUX RESTART' in line and not '%' in line and not line.strip() == '' and not 'Average:' in line:
             useful_lines.append(line)
     return useful_lines
 
@@ -33,19 +33,28 @@ def get_cpu_stats(date):
 def main():
     dates = []
     for i in range(6, -1, -1):
-        dates.append((datetime.datetime.now() - datetime.timedelta(days=i)).date().day)
+        dates.append((datetime.datetime.now() - datetime.timedelta(days=i)))
+
+    hourly_dates = []
+    for i in range(len(dates)*24):
+        hourly_dates.append(dates[0] + datetime.timedelta(hours=i))
+
+    dates = [date.date().day for date in dates]
 
     cpu_results = []
     for date in dates:
         cpu_results.extend(get_cpu_stats(date))
 
     image = BytesIO()
-    pyplot.plot(cpu_results)
-    pyplot.savefig(image)
+    pyplot.figure(figsize=(20,10))
+    pyplot.ylim(0, 100)
+    pyplot.plot(hourly_dates, cpu_results)
+    pyplot.savefig(image, format='jpg')
+    image.seek(0)
 
     message = EmailMessage()
     message['Subject'] = 'Your Raspberry Pi'
-    message.add_attachment(image)
+    message.add_attachment(image.read(), maintype='application', subtype='octet-stream', filename='cpu.jpg')
 
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl.create_default_context()) as server:
         server.login(environ.get('SOURCE_EMAIL'), environ.get('SOURCE_PASSWORD'))
