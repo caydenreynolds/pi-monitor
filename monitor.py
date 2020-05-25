@@ -14,10 +14,16 @@ Subject: Your Raspberry Pi
 {}
 """
 
+def trim_lines(lines):
+    useful_lines = []
+    for line in lines:
+        if not 'LINUX_RESTART' in line and not '%' in line and not line.strip() == '' and not 'Average:' in line:
+            useful_lines.append(line)
+    return useful_lines
+
 def get_cpu_stats(date):
     result = run(f'sar -f /var/log/sysstat/sa{date:02d}', shell=True, capture_output=True, text=True)
-    lines = result.stdout.split('\n')
-    lines = lines[5:-1] #Cut out the header and footer lines
+    lines = trim_lines(result.stdout.split('\n'))
     hourly_results = [0.0] * 24
     for i in range(len(lines)):
         active_percent = 100.0-float(lines[i].split(' ')[-1])
