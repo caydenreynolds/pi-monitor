@@ -1,18 +1,16 @@
 import datetime
 import smtplib
 import ssl
+from email.message import EmailMessage
+from io import BytesIO
 from os import environ
 from sched import scheduler
 from subprocess import run
 from time import time
 
+from matplotlib import pyplot
+
 ssl_port = 465
-
-message = """\
-Subject: Your Raspberry Pi
-
-{}
-"""
 
 def trim_lines(lines):
     useful_lines = []
@@ -38,12 +36,23 @@ def main():
 
     cpu_results = []
     for date in dates:
-        cpu_results.append(get_cpu_stats(date))
+        cpu_results.extend(get_cpu_stats(date))
+
+    image = BytesIO()
+    pyplot.plot(cpu_results)
+    pyplot.savefig(image)
+
+    message = EmailMessage()
+    message['Subject'] = 'Your Raspberry Pi'
+    message.add_attachment(image)
 
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl.create_default_context()) as server:
         server.login(environ.get('SOURCE_EMAIL'), environ.get('SOURCE_PASSWORD'))
-        server.sendmail(environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'), message.format(cpu_results))
-    print(cpu_results)
+        server.send_message(message, environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'))
+        # server.sendmail(environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'), message.format(cpu_results))
+
+    
+    # print(cpu_results)
 
 if __name__ == "__main__":
     main()
