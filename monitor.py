@@ -12,7 +12,6 @@ from matplotlib import pyplot
 
 ssl_port = 465
 
-
 def trim_lines(lines):
     lines = lines[1:]
     useful_lines = []
@@ -26,7 +25,7 @@ def get_cpu_stats(date):
     lines = trim_lines(result.stdout.split('\n'))
     hourly_results = [0.0] * 24
     for i in range(len(lines)):
-        active_percent = 100.0-float(lines[i].split(' ')[-1])
+        active_percent = 100.0-float(lines[i].split()[-1])
         hourly_results[i//6] += active_percent
 
     return [result/6 for result in hourly_results]
@@ -36,10 +35,14 @@ def get_mem_stats(date):
     lines = trim_lines(result.stdout.split('\n'))
     hourly_results = [0.0] * 24
     for i in range(len(lines)):
-        active_percent = 100.0-float(lines[i].split(' ')[4])
+        active_percent = float(lines[i].split()[4])
         hourly_results[i//6] += active_percent
 
     return [result/6 for result in hourly_results]
+
+def get_disk_usage():
+    result = run(f'df', shell=True, capture_output=True, text=True)
+    return result.stdout.split('\n')[1].split()[4]
 
 def send_statistics():
     dates = []
@@ -60,9 +63,12 @@ def send_statistics():
 
     pyplot.figure(figsize=(20,10))
     pyplot.ylim(0, 100)
+    pyplot.ylabel(r'% of maximum')
 
     message = EmailMessage()
     message['Subject'] = 'Your Raspberry Pi'
+    disk_usage = get_disk_usage()
+    message.set_content(f'Your current disk usage is {disk_usage}')
 
     for stat in ((cpu_results, 'cpu'), (mem_results, 'mem')):
         image = BytesIO()
@@ -70,6 +76,7 @@ def send_statistics():
         pyplot.savefig(image, format='jpg')
         image.seek(0)
         message.add_attachment(image.read(), maintype='application', subtype='octet-stream', filename=f'{stat[1]}.jpg')
+        pyplot.cla()
     
 
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl.create_default_context()) as server:
@@ -77,7 +84,7 @@ def send_statistics():
         server.send_message(message, environ.get('SOURCE_EMAIL'), environ.get('DESTINATION_EMAIL'))
 
 def main():
-    schedule.every().friday.at('23:55').do(send_statistics())
+    schedule.every().friday.at('23:55').do(send_statistics)
 
     while True:
         schedule.run_pending()
